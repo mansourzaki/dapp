@@ -2,6 +2,7 @@
 import 'dart:io';
 
 import 'package:dapp_f/TodoListModel.dart';
+import 'package:dapp_f/profile.dart';
 import 'package:dapp_f/services/functions.dart';
 import 'package:dapp_f/todo_list.dart';
 import 'package:flutter/material.dart';
@@ -22,13 +23,11 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Flutter Demo',
       theme: ThemeData(
+        brightness: Brightness.dark,
         primarySwatch: Colors.blue,
       ),
       home: ChangeNotifierProvider(
-          create: (context) => TodoListModel(),
-          child: MyHomePage(
-            title: 'Test',
-          )),
+          create: (context) => TodoListModel(), child: ProfilePage()),
     );
   }
 }
@@ -66,22 +65,23 @@ class _MyHomePageState extends State<MyHomePage> {
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           print('ff');
-          launchUrl(
-              Uri.parse('wc:a227a073-c03a-4d8c-be3d-cd4e50c887ae@1'));
+          //launchUrl(Uri.parse('wc:a227a073-c03a-4d8c-be3d-cd4e50c887ae@1'));
           EthereumWalletConnectProvider provider =
               EthereumWalletConnectProvider(connector!);
-          String result = await EthereumWalletConnectProvider(connector!)
-              .sendTransaction(
-                  from: session!.accounts.first,
-                  to: '0x478a4904ED1e493D6c11D9C6746Ea7D6ab6736A6',
-                  value: BigInt.from(10000000));
+          var re = await connector!.sendCustomRequest(
+              method: 'licenses', params: [BigInt.from(406153734)]);
+          print(re);
+          // String result = await EthereumWalletConnectProvider(connector!)
+          //     .sendTransaction(
+          //         from: session!.accounts.first,
+          //         to: '0x478a4904ED1e493D6c11D9C6746Ea7D6ab6736A6',
+          //         value: BigInt.from(10000000));
           // SessionStatus newSession = await connector!.createSession(
           //     chainId: 3,
           //     onDisplayUri: (uri) async =>
           //         {print(uri), await launchUrl(Uri.parse(uri))});
 
-          
-          print(result);
+          // print(result);
         },
       ),
       body: Center(
