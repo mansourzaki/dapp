@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:walletconnect_dart/walletconnect_dart.dart';
-import 'package:web3dart/web3dart.dart';
 
+import 'package:web3dart/web3dart.dart';
+import 'package:web_socket_channel/io.dart';
+import 'DrivingLicenseModel.dart';
+import 'package:provider/provider.dart';
 import 'services/functions.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -22,16 +26,17 @@ class _ProfilePageState extends State<ProfilePage> {
   Client? httpClient;
   WalletConnect? connector;
   String rpcUrl =
-      'https://ropsten.infura.io/v3/86ae74f732714f648d5078ae4b83f5d6';
+      'HTTP://192.168.1.47:7545';
   @override
   void initState() {
     httpClient = Client();
     web3client = Web3Client(rpcUrl, httpClient!);
+
     super.initState();
   }
 
   Future<void> _connect() async {
-    contract = await loadContract();
+   // contract = await loadContract();
     print('connect button');
     connector = WalletConnect(
       bridge: 'https://bridge.walletconnect.org',
@@ -40,10 +45,11 @@ class _ProfilePageState extends State<ProfilePage> {
         description: 'WalletConnect Developer App',
         url: 'https://walletconnect.org',
         icons: [
-          'https://gblobscdn.gitbook.com/spaces%2F-LJJeCjcLrr53DcT1Ml7%2Favatar.png?alt=media'
+          'https://gblobscdn.gitbook.com/spac es%2F-LJJeCjcLrr53DcT1Ml7%2Favatar.png?alt=media'
         ],
       ),
     );
+
     connector!.on('connect', (session) {
       isConnected = true;
       print(session);
@@ -63,9 +69,6 @@ class _ProfilePageState extends State<ProfilePage> {
     });
     print('account ' + account!);
     if (account != null) {
-      // print('in acc');
-      // EthereumWalletConnectProvider provider =
-      //     EthereumWalletConnectProvider(connector);
       // String result = await EthereumWalletConnectProvider(connector)
       //     .sendTransaction(
       //         from: session!.accounts.first,
@@ -90,6 +93,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    //final model = Provider.of<DrivingLicenseModel>(context);
     return Scaffold(
       appBar: AppBar(
         title: Text('My Profile'),
@@ -110,20 +114,54 @@ class _ProfilePageState extends State<ProfilePage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   ElevatedButton(
-                      onPressed: () {}, child: const Text('getLicenses')),
+                      onPressed: () async {
+                        await loadContract();
+                      },
+                      child: const Text('getLicenses')),
                   ElevatedButton(
                       onPressed: () async {
                         print('create');
                         print('session');
+                        String contractAddress =
+                            '0xEe737412A2605AcebD3c555ad8ad88941016E4bf';
+                        EthPrivateKey credentials = EthPrivateKey.fromHex(
+                            'b4dd738c5f1968436d02c9300ffd2ef9ca1179d76e78eb9afa8cdbd2e5f14760');
+                        Web3Client w3 = Web3Client(
+                          'http://192.168.1.47:7545',
+                          Client(),
+                        );
+                        String abi = await rootBundle
+                            .loadString('src/abis/DrivingLicense.json');
+
+                        // DeployedContract contract = DeployedContract(
+                        //     ContractAbi.fromJson(abi, 'DrivingLicense'),
+                        //     EthereumAddress.fromHex(contractAddress));
+                        //await w3!.call(contract: contract, function: contract.function('getLicensesSize'), params: []);
+                        print(await w3.getBalance(credentials.address));
+                        // var g = await w3.sendTransaction(
+                        //     credentials,
+                        //     Transaction.callContract(
+                        //       contract: contract,
+                        //       function: contract.function('createLicense'),
+                        //       parameters: ['mansour', BigInt.from(199)],
+                        //     ));
+                        // await web3client!.call(
+                        //     contract: contract!,
+                        //     function: contract!.function('getLicensesSize'),
+                        //     params: []);
+                        // var res = await model.getLicensesSize();
+
+                        //print(res);
                         // launchUrl(Uri.parse(
                         //     'wc:a227a073-c03a-4d8c-be3d-cd4e50c887ae@1'));
+
                         EthereumWalletConnectProvider provider =
                             EthereumWalletConnectProvider(connector!);
 
-                        var re = await connector!.sendCustomRequest(
-                            method: 'licenses',
-                            params: [406153734]);
-                        print(re);
+                        // var re = await connector!.sendCustomRequest(
+                        //     method: 'licenses', params: [406153734]);
+                        // var re = await w3c!.connector.sendCustomRequest();
+                        // print(re);
                         // String result =
                         //     await EthereumWalletConnectProvider(connector!)
                         //         .sendTransaction(
@@ -173,13 +211,22 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: Text('Conncet'),
                 onPressed: () async {
                   await _connect();
-                  setState(() {});
+                  // w3c = Web3Connect();
+                  //await w3c!.connect();
+                  //w3c!.enterRpcUrl(rpcUrl);
+                  // if (w3c!.account != null) {
+                  //   print('not null');
+                  //   print(w3c!.account);
+                  //   print(w3c!.credentials);
+                  // }
                 }),
         ElevatedButton(
             child: const Text('Disconnect'),
             onPressed: () async {
-              await connector!.killSession();
-              setState(() {});
+              //await connector!.killSession();
+              setState(() {
+                isConnected = false;
+              });
             }),
       ],
     ));

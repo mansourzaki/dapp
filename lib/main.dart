@@ -1,6 +1,7 @@
 //import 'package:dart_web3/dart_web3.dart';
 import 'dart:io';
 
+import 'package:dapp_f/DrivingLicenseModel.dart';
 import 'package:dapp_f/TodoListModel.dart';
 import 'package:dapp_f/profile.dart';
 import 'package:dapp_f/services/functions.dart';
@@ -21,14 +22,12 @@ class MyApp extends StatelessWidget {
 
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        primarySwatch: Colors.blue,
-      ),
-      home: ChangeNotifierProvider(
-          create: (context) => TodoListModel(), child: ProfilePage()),
-    );
+        title: 'Flutter Demo',
+        theme: ThemeData(
+          brightness: Brightness.dark,
+          primarySwatch: Colors.blue,
+        ),
+        home: const ProfilePage());
   }
 }
 
@@ -69,7 +68,7 @@ class _MyHomePageState extends State<MyHomePage> {
           EthereumWalletConnectProvider provider =
               EthereumWalletConnectProvider(connector!);
           var re = await connector!.sendCustomRequest(
-              method: 'licenses', params: [BigInt.from(406153734)]);
+              method: 'licenses', params: [BigInt.from(22222)]);
           print(re);
           // String result = await EthereumWalletConnectProvider(connector!)
           //     .sendTransaction(
