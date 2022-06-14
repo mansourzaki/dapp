@@ -27,7 +27,8 @@ class MyApp extends StatelessWidget {
           brightness: Brightness.dark,
           primarySwatch: Colors.blue,
         ),
-        home: const ProfilePage());
+        home: ChangeNotifierProvider(
+            create: (context) => DrivingLicenseModel(), child: ProfilePage()));
   }
 }
 

@@ -1,14 +1,8 @@
+import 'package:dapp_f/models/License.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:walletconnect_dart/walletconnect_dart.dart';
-
 import 'package:web3dart/web3dart.dart';
-import 'package:web_socket_channel/io.dart';
-import 'DrivingLicenseModel.dart';
-import 'package:provider/provider.dart';
-import 'services/functions.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({Key? key}) : super(key: key);
@@ -18,217 +12,223 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  SessionStatus? session;
-  String? account;
-  DeployedContract? contract;
-  bool isConnected = false;
-  Web3Client? web3client;
-  Client? httpClient;
-  WalletConnect? connector;
-  String rpcUrl =
-      'HTTP://192.168.1.47:7545';
-  @override
-  void initState() {
-    httpClient = Client();
-    web3client = Web3Client(rpcUrl, httpClient!);
+  late Client httpClient;
+  late Web3Client ethereumClient;
+  TextEditingController idController = TextEditingController();
+  TextEditingController nameController = TextEditingController();
+  TextEditingController id2Controller = TextEditingController();
 
-    super.initState();
+  String address = '0x3c5d57a73d0bc7e87289734a14f5f6e2e8c3cfda';
+  String ethereumClientUrl =
+      'https://ropsten.infura.io/v3/143aa563dccc496ab7993a6d0788add7';
+  String contractName = 'DrivingLicense';
+  String privateKey =
+      '955cf52b6dc10f22316b78807575686d9a60d8e28b288c9dc5bedc7e48cd924d';
+  bool loading = false;
+  bool showDetails = false;
+  int size = 0;
+  License license = License('', '0', DateTime.now());
+  Future<List<dynamic>> query(String functionName, List<dynamic> params) async {
+    DeployedContract contract = await getContract();
+    ContractFunction function = contract.function(functionName);
+    List<dynamic> result = await ethereumClient.call(
+        contract: contract, function: function, params: params);
+    return result;
   }
 
-  Future<void> _connect() async {
-   // contract = await loadContract();
-    print('connect button');
-    connector = WalletConnect(
-      bridge: 'https://bridge.walletconnect.org',
-      clientMeta: const PeerMeta(
-        name: 'Masnour',
-        description: 'WalletConnect Developer App',
-        url: 'https://walletconnect.org',
-        icons: [
-          'https://gblobscdn.gitbook.com/spac es%2F-LJJeCjcLrr53DcT1Ml7%2Favatar.png?alt=media'
-        ],
-      ),
+  Future<dynamic> transaction(String functionName, List<dynamic> params) async {
+    EthPrivateKey credential = EthPrivateKey.fromHex(privateKey);
+    DeployedContract contract = await getContract();
+    ContractFunction function = contract.function(functionName);
+    dynamic result = await ethereumClient.sendTransaction(
+      credential,
+      Transaction.callContract(
+          contract: contract, function: function, parameters: params),
+      chainId: 3
     );
+    showDetails = false;
+    return result;
+  }
 
-    connector!.on('connect', (session) {
-      isConnected = true;
-      print(session);
-    });
-    connector!.on('session_update', (payload) => print(payload));
-    connector!.on('disconnect', (session) => print(session));
-    // connector!.killSession();
-    if (!connector!.connected) {
-      isConnected = true;
-      session = await connector!.createSession(
-          chainId: 3,
-          onDisplayUri: (uri) async =>
-              {print(uri), await launchUrl(Uri.parse(uri))});
-    }
-    setState(() {
-      account = session!.accounts[0];
-    });
-    print('account ' + account!);
-    if (account != null) {
-      // String result = await EthereumWalletConnectProvider(connector)
-      //     .sendTransaction(
-      //         from: session!.accounts.first,
-      //         to: contract.address.toString());
-      // print('result ' + result);
-      print(contract!.address);
+  Future<DeployedContract> getContract() async {
+    String abi = await rootBundle.loadString("src/abis/DrivingLicense.json");
+    String contractAddress = "0x58532E85A514045fA502641e42360bD4f26eC44b";
+    DeployedContract contract = DeployedContract(
+        ContractAbi.fromJson(abi, contractName),
+        EthereumAddress.fromHex(contractAddress));
+    return contract;
+  }
 
-      //  print('data: ${session!.accounts.first}');
-      // yourContract = YourContract(address: contractAddr, client: client);
-    }
+  Future<void> getLicense(int id) async {
+    BigInt parsedId = BigInt.from(id);
+    var result = await query('getLicense', [parsedId]);
 
-    // if (account != null) {
-    //   var httpClient = Client();
-    //   final client = Web3Client(rpcUrl,);
-    //   EthereumWalletConnectProvider provider =
-    //       EthereumWalletConnectProvider(connector);
-    // }
-    // EthereumWalletConnectProvider provider =
-    //     EthereumWalletConnectProvider(connector);
-    // final credentials = EthereumWalletConnectProvider(connector);
+    List data = result[0];
+    int timestamp = int.parse(data[1].toString());
+    DateTime date = DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
+    print(date.toString());
+    license = License(data[0], data[1].toString(), date);
+    showDetails = true;
+    setState(() {});
+    print(result);
+  }
+
+  Future<void> getLicensesSize() async {
+    loading = true;
+    setState(() {});
+    List<dynamic> result = await query('balance', []);
+    size = int.parse(result[0].toString());
+    loading = false;
+    print('size $size');
+    setState(() {});
+  }
+
+  Future<void> createNewLicense(String name, int id) async {
+    print('creating');
+    BigInt parsedId = BigInt.from(id);
+    final result = await transaction("createLicense", [name, parsedId]);
+    print('created');
+    print(result);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    httpClient = Client();
+    ethereumClient = Web3Client(ethereumClientUrl, httpClient);
+    getLicensesSize();
   }
 
   @override
   Widget build(BuildContext context) {
-    //final model = Provider.of<DrivingLicenseModel>(context);
     return Scaffold(
       appBar: AppBar(
         title: Text('My Profile'),
-        actions: [
-          IconButton(
-              onPressed: () async {
-                await connector!.killSession();
-                isConnected = false;
-                setState(() {});
-              },
-              icon: Icon(Icons.logout))
-        ],
       ),
-      floatingActionButton: FloatingActionButton(onPressed: () {}),
-      body: isConnected
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+      body: SingleChildScrollView(
+        child: Container(
+          width: double.infinity,
+          height: 700,
+          child: Column(
+            children: [
+              const SizedBox(
+                height: 30,
+              ),
+              const Text(
+                "Balance",
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
+              ),
+              loading
+                  ? const CircularProgressIndicator()
+                  : Text(
+                      size.toString(),
+                      style: const TextStyle(
+                          fontSize: 30, fontWeight: FontWeight.w500),
+                    ),
+              SizedBox(
+                width: MediaQuery.of(context).size.width * 0.6,
+                child: Column(children: [
+                  const Text(
+                    'Create New License',
+                    style: TextStyle(fontSize: 26, fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(
+                    height: 20,
+                  ),
+                  TextField(
+                    controller: nameController,
+                    keyboardType: TextInputType.text,
+                    decoration: const InputDecoration(label: Text('Name')),
+                  ),
+                  TextField(
+                    controller: idController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(label: Text('Id')),
+                  ),
+                ]),
+              ),
+              const Divider(),
+              SizedBox(
+                width: MediaQuery.of(context).size.width * 0.6,
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Get License by Id',
+                        style: TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.w500,
+                            textBaseline: TextBaseline.alphabetic),
+                      ),
+                      TextField(
+                        controller: id2Controller,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(label: Text('Id')),
+                      ),
+                      Visibility(
+                        visible: showDetails,
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(vertical: 20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Name: ${license.name}'),
+                              Text('Id: ${license.id}'),
+                              Text('Date ${license.time}')
+                            ],
+                          ),
+                        ),
+                      )
+                    ]),
+              ),
+              const Spacer(),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  ElevatedButton(
-                      onPressed: () async {
-                        await loadContract();
-                      },
-                      child: const Text('getLicenses')),
-                  ElevatedButton(
-                      onPressed: () async {
-                        print('create');
-                        print('session');
-                        String contractAddress =
-                            '0xEe737412A2605AcebD3c555ad8ad88941016E4bf';
-                        EthPrivateKey credentials = EthPrivateKey.fromHex(
-                            'b4dd738c5f1968436d02c9300ffd2ef9ca1179d76e78eb9afa8cdbd2e5f14760');
-                        Web3Client w3 = Web3Client(
-                          'http://192.168.1.47:7545',
-                          Client(),
-                        );
-                        String abi = await rootBundle
-                            .loadString('src/abis/DrivingLicense.json');
-
-                        // DeployedContract contract = DeployedContract(
-                        //     ContractAbi.fromJson(abi, 'DrivingLicense'),
-                        //     EthereumAddress.fromHex(contractAddress));
-                        //await w3!.call(contract: contract, function: contract.function('getLicensesSize'), params: []);
-                        print(await w3.getBalance(credentials.address));
-                        // var g = await w3.sendTransaction(
-                        //     credentials,
-                        //     Transaction.callContract(
-                        //       contract: contract,
-                        //       function: contract.function('createLicense'),
-                        //       parameters: ['mansour', BigInt.from(199)],
-                        //     ));
-                        // await web3client!.call(
-                        //     contract: contract!,
-                        //     function: contract!.function('getLicensesSize'),
-                        //     params: []);
-                        // var res = await model.getLicensesSize();
-
-                        //print(res);
-                        // launchUrl(Uri.parse(
-                        //     'wc:a227a073-c03a-4d8c-be3d-cd4e50c887ae@1'));
-
-                        EthereumWalletConnectProvider provider =
-                            EthereumWalletConnectProvider(connector!);
-
-                        // var re = await connector!.sendCustomRequest(
-                        //     method: 'licenses', params: [406153734]);
-                        // var re = await w3c!.connector.sendCustomRequest();
-                        // print(re);
-                        // String result =
-                        //     await EthereumWalletConnectProvider(connector!)
-                        //         .sendTransaction(
-                        //   from: session!.accounts.first,
-                        //   to: '0x478a4904ED1e493D6c11D9C6746Ea7D6ab6736A6',
-                        //   value: BigInt.from(10000000),
-                        // );
-                        // print('before launch');
-
-                        // Credentials cre = EthPrivateKey.fromHex(
-                        //     '955cf52b6dc10f22316b78807575686d9a60d8e28b288c9dc5bedc7e48cd924d');
-                        // var _ownerAddress = await cre.extractAddress();
-                        // print('$_ownerAddress adress');
-                        // var res = await web3client!.sendTransaction(
-                        //     cre,
-                        //     Transaction.callContract(
-                        //       value: EtherAmount.inWei(BigInt.from(500000000000000)),
-                        //         contract: contract!,
-                        //         function: contract!.function('createLicense'),
-                        //         parameters: ['mans', BigInt.from(12345678)]));
-                        // List s = await web3client!.call(
-                        //     contract: contract!,
-                        //     function: contract!.function('licenses'),
-                        //     params: [BigInt.from(406153734)]);
-
-                        // print(res);
-                        // await connector!.sendCustomRequest(
-                        //     method: 'createLicense  ',
-                        //     params: ['mansour', 406153]);
-                      },
-                      child: const Text('Create New License'))
+                  Container(
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.blue,
+                    ),
+                    child: IconButton(
+                      onPressed: getLicensesSize,
+                      icon: const Icon(Icons.refresh),
+                      color: Colors.white,
+                    ),
+                  ),
+                  Container(
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.green,
+                    ),
+                    child: IconButton(
+                      onPressed: () =>
+                          getLicense(int.parse(id2Controller.text)),
+                      icon: const Icon(Icons.get_app),
+                      color: Colors.white,
+                    ),
+                  ),
+                  Container(
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.red,
+                    ),
+                    child: IconButton(
+                      onPressed: () => createNewLicense(
+                          nameController.text, int.parse(idController.text)),
+                      icon: const Icon(Icons.send),
+                      color: Colors.white,
+                    ),
+                  ),
                 ],
               ),
-            )
-          : _buildConnectionButtons(),
+              const SizedBox(
+                height: 20,
+              )
+            ],
+          ),
+        ),
+      ),
     );
-  }
-
-  Widget _buildConnectionButtons() {
-    return Center(
-        child: Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        isConnected
-            ? const Text('connected')
-            : ElevatedButton(
-                child: Text('Conncet'),
-                onPressed: () async {
-                  await _connect();
-                  // w3c = Web3Connect();
-                  //await w3c!.connect();
-                  //w3c!.enterRpcUrl(rpcUrl);
-                  // if (w3c!.account != null) {
-                  //   print('not null');
-                  //   print(w3c!.account);
-                  //   print(w3c!.credentials);
-                  // }
-                }),
-        ElevatedButton(
-            child: const Text('Disconnect'),
-            onPressed: () async {
-              //await connector!.killSession();
-              setState(() {
-                isConnected = false;
-              });
-            }),
-      ],
-    ));
   }
 }

@@ -12,8 +12,8 @@ contract DrivingLicense{
         uint timestamp;
     }
 
-    mapping(int256 => License) public licenses;
-    int256[] public ids;
+    mapping(int256 => License) private licenses;
+    int256[] private ids;
     
     constructor () {
 
@@ -28,7 +28,7 @@ contract DrivingLicense{
     event LicenseCreated(int256 id);
 
 
-    function containes(int256 id) private view returns(bool){
+    function containes(int256 id) public view returns(bool){
      bool doesListContainElement = false;
         for (uint i=0; i < ids.length; i++) {
             if (id == ids[i]) {
@@ -48,6 +48,10 @@ contract DrivingLicense{
             timestamp: block.timestamp
         });
         emit LicenseCreated(id);
+    }
+
+    function getLicense(int256 id) public view returns(License memory){
+        return licenses[id];
     }
 
     function getLicensesSize() external view returns(uint256){

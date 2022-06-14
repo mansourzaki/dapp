@@ -59,14 +59,15 @@ class DrivingLicenseModel with ChangeNotifier {
 
   Future<void> getDeployedContract() async {
     _contract = DeployedContract(ContractAbi.fromJson(_abiCode!, 'Todo'),
-        EthereumAddress.fromHex('0x9e4b8b178588305b6f3028e62124a48cec38c9ad'));
-    _getLicense = _contract!.function('licenses');
+        EthereumAddress.fromHex('0x1218aC46BD6Fb5C11676D723E458cE556fFB6217'));
+    _getLicense = _contract!.function('getLicense');
     _createLicense = _contract!.function('createLicense');
     _getLength = _contract!.function('getLicensesSize');
     // _getIds = _contract!.function('ids');
   }
 
   getLicensesSize() async {
+    
     List map = await _web3client!
         .call(contract: _contract!, function: _getLength!, params: []);
     print(map);
